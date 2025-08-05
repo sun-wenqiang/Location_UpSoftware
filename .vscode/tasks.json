@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "qmake build",
+            "type": "shell",
+            "command": "qmake",
+            "args": ["${workspaceFolder}/myproject.pro"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "make",
+            "type": "shell",
+            "command": "make",
+            "group": "build",
+            "dependsOn": ["qmake build"]
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "make clean",
+            "group": "build"
+        }
+    ]
+}
