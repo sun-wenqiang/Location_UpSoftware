@@ -2,9 +2,10 @@
     "configurations": [
         {
             "name": "Linux",
-            "includePath": [
-                "/usr/include/x86_64-linux-gnu/qt5/**"  // 根据实际路径调整
-            ],
+            "includePath": ["/usr/include/x86_64-linux-gnu/qt5",
+                            "/usr/include/x86_64-linux-gnu/qt5/QtCore",
+                            "/usr/include/x86_64-linux-gnu/qt5/QtGui",
+                            "/usr/include/x86_64-linux-gnu/qt5/QtWidgets"],
             "defines": [],
             "compilerPath": "/usr/bin/g++",
             "cStandard": "c17",
