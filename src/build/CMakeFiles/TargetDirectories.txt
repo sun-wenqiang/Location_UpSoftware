@@ -1,0 +1,5 @@
+/home/sun/code/Location_UpSoftware/src/build/CMakeFiles/HelloApp.dir
+/home/sun/code/Location_UpSoftware/src/build/CMakeFiles/edit_cache.dir
+/home/sun/code/Location_UpSoftware/src/build/CMakeFiles/rebuild_cache.dir
+/home/sun/code/Location_UpSoftware/src/build/CMakeFiles/HelloApp_autogen_timestamp_deps.dir
+/home/sun/code/Location_UpSoftware/src/build/CMakeFiles/HelloApp_autogen.dir
