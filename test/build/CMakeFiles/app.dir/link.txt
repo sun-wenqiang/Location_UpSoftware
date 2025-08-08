@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/app.dir/test.cpp.o CMakeFiles/app.dir/home/sun/code/Location_UpSoftware/algorithm/algorithm.cpp.o -o app 
