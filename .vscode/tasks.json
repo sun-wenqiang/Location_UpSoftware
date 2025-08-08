@@ -23,6 +23,20 @@
             "type": "shell",
             "command": "make clean",
             "group": "build"
+        },
+        {
+            "label": "C/C++: g++",
+            "command": "g++",
+            "args": [
+                "-g",
+                "${workspaceFolder}/test/test.cpp",
+                "${workspaceFolder}/algorithm/algorithm.cpp",
+                "-o",
+                "${workspaceFolder}/build/app",
+                "-I${workspaceFolder}/algorithm",
+                "-I${workspaceFolder}/test",
+                "-std=c++17"
+            ]
         }
     ]
 }

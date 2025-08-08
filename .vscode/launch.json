@@ -2,24 +2,39 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Qt Program",
+            "name": "C++ 调试",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/myproject",  // 编译生成的可执行文件路径
-            "args": [],
+            "program": "${workspaceFolder}/test/${fileBasenameNoExtension}", // 可执行文件路径
+            "args": [], // 命令行参数
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "preLaunchTask": "make",
             "setupCommands": [
                 {
-                    "description": "Enable pretty-printing for gdb",
+                    "description": "为 gdb 启用整齐打印",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ]
+            ],
+            "preLaunchTask": "C/C++: g++", // 需与 tasks.json 的 label 匹配
+            "miDebuggerPath": "/usr/bin/g++" // 修改为你的 gdb 路径
+        },
+        {
+            "name": "C/C++: g++",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/test/app",  // 调试目标程序路径
+            "args": [],                                // 程序启动参数
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",              // 工作目录
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "C/C++: g++",   // 必须与 tasks.json 的 label 一致
+            "miDebuggerPath": "/usr/bin/g++"           // 调试器路径
         }
     ]
 }
