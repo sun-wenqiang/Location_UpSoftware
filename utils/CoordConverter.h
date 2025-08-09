@@ -4,9 +4,9 @@
 #include <cmath>
 
 /* WGS84椭球体参数 */
-const double WGS84_A = 6378137.0;                       // 长半轴（赤道半径，单位：米）
-const double WGS84_F = 1 / 298.257223563;               // 扁率
-const double WGS84_E_SQ = (WGS84_F * (2 - WGS84_F));    // 第一偏心率平方
+const constexpr  double WGS84_A = 6378137.0;                       // 长半轴（赤道半径，单位：米）
+const constexpr  double WGS84_F = 1 / 298.257223563;               // 扁率
+const constexpr  double WGS84_E_SQ = (WGS84_F * (2 - WGS84_F));    // 第一偏心率平方
 
 /**
  * @struct EcefCoord

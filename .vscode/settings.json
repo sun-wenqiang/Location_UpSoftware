@@ -72,7 +72,9 @@
         "ios": "cpp",
         "locale": "cpp",
         "queue": "cpp",
-        "core": "cpp"
+        "core": "cpp",
+        "dense": "cpp"
     },
-    "C_Cpp.errorSquiggles": "disabled"
+    "C_Cpp.errorSquiggles": "disabled",
+    "C_Cpp.intelliSenseEngine": "default"
 }

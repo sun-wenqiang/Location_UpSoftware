@@ -27,7 +27,7 @@ EcefCoord Geo2Ecef(GeoCoord geo)
     double N = WGS84_A / sqrt(1 - WGS84_E_SQ * std::pow(sin(geo.latitude), 2));
     ans.x = (N + geo.altitude) * cos(geo.latitude) * cos(geo.longitude);
     ans.y = (N + geo.altitude) * cos(geo.latitude) * sin(geo.longitude);
-    ans.z = (N * (1-WGS84_E_SQ) + geo.altitude) * sin(geo.longitude);
+    ans.z = (N * (1-WGS84_E_SQ) + geo.altitude) * sin(geo.latitude);
     return ans;
 }
 
@@ -58,7 +58,7 @@ EnuCoord Ecef2Enu(EcefCoord ecef, GeoCoord ref)
     double sin_lon0 = sin(ref.longitude);
     double cos_lon0 = cos(ref.longitude);
 
-    double t = -cos_lat0 * dx - sin_lon0 * dy;
+    double t = -cos_lon0 * dx - sin_lon0 * dy;
 
     ans.x = -sin_lon0 * dx + cos_lon0 * dy;
     ans.y = t * sin_lat0 + cos_lat0 * dz;
@@ -112,9 +112,9 @@ EcefCoord Enu2Ecef(EnuCoord enu, GeoCoord ref)
     double t21 =  cos_lat0;
     double t22 =  sin_lat0;
 
-    ans.x = t00 * enu.x + t01 * enu.y + t02 * enu.z;
-    ans.y = t10 * enu.x + t11 * enu.y + t12 * enu.z;
-    ans.z = t20 * enu.x + t21 * enu.y + t22 * enu.z;
+    ans.x = t00 * enu.x + t01 * enu.y + t02 * enu.z + temp.x;
+    ans.y = t10 * enu.x + t11 * enu.y + t12 * enu.z + temp.y;
+    ans.z = t20 * enu.x + t21 * enu.y + t22 * enu.z + temp.z;
 
     return ans;
 }
@@ -147,7 +147,7 @@ GeoCoord Ecef2Geo(EcefCoord ecef)
         h_new = p / cos(lat_rad) - N;
         lat_new = atan2(ecef.z, p * (1 - WGS84_E_SQ * N / (N + h_new)));
 
-        if (abs(lat_new - lat_rad) < tol && abs(h_new - h) < tol)
+        if (std::fabs(lat_new - lat_rad) < tol && std::fabs(h_new - h) < tol)
         {
             break;
         }
