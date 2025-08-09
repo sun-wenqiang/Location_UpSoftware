@@ -2,14 +2,22 @@
     "configurations": [
         {
             "name": "Linux",
-            "includePath": ["/usr/include/x86_64-linux-gnu/qt5",
-                            "/usr/include/x86_64-linux-gnu/qt5/QtCore",
-                            "/usr/include/x86_64-linux-gnu/qt5/QtGui",
-                            "/usr/include/x86_64-linux-gnu/qt5/QtWidgets",
-                            "/home/sun/code/Location_UpSoftware/algorithm",
-                            "/home/sun/code/Location_UpSoftware/test",
-                            "/usr/include/eigen3"
-                        ],
+            "includePath": [
+                "/usr/include/x86_64-linux-gnu/qt5",
+                "/usr/include/x86_64-linux-gnu/qt5/QtCore",
+                "/usr/include/x86_64-linux-gnu/qt5/QtGui",
+                "/usr/include/x86_64-linux-gnu/qt5/QtWidgets",
+                "/usr/include/eigen3",
+                "/home/sun/code/Location_UpSoftware/algorithm",
+                "/home/sun/code/Location_UpSoftware/app",
+                "/home/sun/code/Location_UpSoftware/gui",
+                "/home/sun/code/Location_UpSoftware/include",
+                "/home/sun/code/Location_UpSoftware/network",
+                "/home/sun/code/Location_UpSoftware/protocal",
+                "/home/sun/code/Location_UpSoftware/test",
+                "/home/sun/code/Location_UpSoftware/utils"
+
+            ],
             "defines": [],
             "compilerPath": "/usr/bin/g++",
             "cStandard": "c17",

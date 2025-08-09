@@ -63,7 +63,16 @@
         "variant": "cpp",
         "complex": "cpp",
         "cstring": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "cassert": "cpp",
+        "ccomplex": "cpp",
+        "cerrno": "cpp",
+        "cfloat": "cpp",
+        "climits": "cpp",
+        "ios": "cpp",
+        "locale": "cpp",
+        "queue": "cpp",
+        "core": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
