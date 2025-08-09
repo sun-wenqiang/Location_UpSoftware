@@ -1,4 +1,4 @@
-include "protocal.h"
+#include "protocal.h"
 
 
 uint16_t getCRC16(uint8_t* inPtr, size_t len)
