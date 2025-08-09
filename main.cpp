@@ -1,10 +1,11 @@
-#include <QApplication>
-#include <QPushButton>
-#include "algorithm/algorithm.h"
+#include "widget.h"
 
-int main(int argc, char *argv[]) {
-    QApplication app(argc, argv);
-    QPushButton button("Hello Qt!");
-    button.show();
-    return app.exec();
+#include <QApplication>
+
+int main(int argc, char *argv[])
+{
+    QApplication a(argc, argv);
+    Widget w;
+    w.show();
+    return a.exec();
 }
