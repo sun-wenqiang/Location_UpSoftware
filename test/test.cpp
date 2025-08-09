@@ -1,4 +1,5 @@
 #include "../algorithm/algorithm.h"
+#include "../utils/CoordConverter.h"
 #include <iostream>
 
 int main() {
@@ -22,5 +23,24 @@ int main() {
         std::cout<<"解算结果"<<"x = "<<ans[0]<<", y = "<<ans[1]<<std::endl;
     }
 
+    GeoCoord ref, geo;
+    ref.altitude = 528.553282;
+    ref.latitude = 0.603102437039617;
+    ref.longitude = 1.90024091620209;
+
+    geo.altitude = 545.651561;
+    geo.latitude = 0.603108155105235;
+    geo.longitude = 1.90022986819938;
+
+    EnuCoord enu = Geo2Enu(geo, ref);  // WGS84转化为局部东北天坐标，需要以ref为参考
+    std::cout<<"转换结果"<<"x = "<<enu.x<<", y = "<<enu.y<<", z = "<<enu.z<<std::endl;
+    // EcefCoord Geo2Ecef(GeoCoord geo);   // WGS84转化为地心地固坐标系
+    // EnuCoord Ecef2Enu(EcefCoord ecef, GeoCoord ref);  // ECEF转化为局部的直角坐标系，需要以ref节点为参考
+
+    GeoCoord reverse = Enu2Geo(enu, ref);  // 将局部东北天坐标转化为WGS84，需要以ref为参考
+    // EcefCoord Enu2Ecef(EnuCoord enu, GeoCoord ref);  // 将局部的东北天坐标转化为ECEF坐标，需要以ref为参考
+    // GeoCoord Ecef2Geo(EcefCoord ecef);    // 将ECEF坐标转化为经纬度
+
+    std::cout<<"转换回来"<<"longitude = "<<reverse.longitude<<", latitude = "<<reverse.latitude<<", altitude = "<<reverse.altitude<<std::endl;
     return 0;
 }
