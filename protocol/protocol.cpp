@@ -17,7 +17,7 @@
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-uint16_t getCRC16(uint8_t* inPtr, size_t len)
+uint16_t getCRC16(const uint8_t* inPtr, size_t len)
 {
     uint16_t crc = 0xffff;
     uint8_t index;
@@ -63,8 +63,8 @@ uint16_t getCRC16(uint8_t* inPtr, size_t len)
  */
 bool sendCommand(QTcpSocket* tcpclient, uint8_t device_id, uint8_t cmd_id, const std::vector<uint8_t>& cmd_data)
 {
-    if (!tcpcliend || tcpclient->state() != QAbstractSocket::ConnectedState) {
-        qWarning << "TCP client is not connected.";
+    if (!tcpclient || tcpclient->state() != QAbstractSocket::ConnectedState) {
+        qWarning() << "TCP client is not connected.";
         return false;
     }
 
@@ -79,7 +79,7 @@ bool sendCommand(QTcpSocket* tcpclient, uint8_t device_id, uint8_t cmd_id, const
         packet.append(reinterpret_cast<const char*>(cmd_data.data()), static_cast<int>(cmd_data.size()));
     }
 
-    uint16_t crc = getCRC16(reinterpret_cast<uint8_t*>(packet.constData()), static_cast<size_t>(packet.size()));
+    uint16_t crc = getCRC16(reinterpret_cast<const uint8_t*>(packet.constData()), static_cast<size_t>(packet.size()));
     packet.append(static_cast<char>(crc & 0xFF));
     packet.append(static_cast<char>((crc >> 8) & 0xFF));
     
@@ -155,7 +155,7 @@ int ParseResponse(const QByteArray& rawData)
 
     QByteArray frame = rawData.mid(headIdx, totalLen);
     uint16_t crcReceived = qFromLittleEndian<uint16_t>((const uchar*)frame.constData() + totalLen - 2);
-    uint16_t crcCalculated = getCRC16((uint8_t*)frame.constData(), totalLen - 2);
+    uint16_t crcCalculated = getCRC16((const uint8_t*)frame.constData(), totalLen - 2);
     if (crcReceived != crcCalculated) {
         qDebug() << "Cheeck CRC failed!!!";
         return -1;
@@ -202,7 +202,7 @@ int ParseResponse(const QByteArray& rawData)
             qDebug() << QString("Unknown cmd id  0x%1").arg(cmd, 2, 16, QLatin1Char('0'));
             break;
     }
-
+    return 0;
 }
 
 /**
@@ -231,7 +231,7 @@ void handleGetPower(uint8_t id, QByteArray payload, uint8_t totalLen)
         double voltage = (double)adc_val / 4095.0 * 3.1 * 11 + 0.1;
         qDebug() << QString("ADC = %1, voltage = %2 V").arg(adc_val).arg(voltage, 0, 'f', 2);
     } else if (totalLen == 8) {
-        reportError((uint8_t)payload[0]);
+        reportError(payload[0]);
     } else {
         qDebug() << "Power length wrong!";
     }
@@ -406,7 +406,7 @@ void handleStatus(uint8_t id, QByteArray payload)
         qDebug()<<"Successful.";
         break;
     default:
-        reportError(status);
+        reportError(payload[0]);
         break;
     }
 }
@@ -427,9 +427,8 @@ void handleStatus(uint8_t id, QByteArray payload)
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void reportError(QByteArray payload)
+void reportError(uint8_t status)
 {
-    uint8_t status = (uint8_t)payload[0];
     switch (status)
     {
     case STATUS_CMD_INVALID:

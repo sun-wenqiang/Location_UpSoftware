@@ -24,7 +24,8 @@
                     "text": "-gdb-set disassembly-flavor intel",
                     "ignoreFailures": true
                 }
-            ]
-        },
+            ],
+            "visualizerFile": "/root/.vscode-server/data/User/workspaceStorage/444ba46bed98c0f75b52aa8b07188875/tonka3000.qtvsctools/qt.natvis.xml"
+        }
     ]
 }

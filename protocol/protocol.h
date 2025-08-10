@@ -9,6 +9,7 @@
 #include <QDebug>
 #include <QByteArray>
 #include <map>
+#include <QtEndian>
 
 /*增益表*/
 const int gainValues[] = {-120, 0, 6, 14, 20, 26, 34, 40};
@@ -48,7 +49,7 @@ typedef enum {
     STATUS_GPS_INVALID           = 0x0A,  // GPS无效
 } CommandStatus;
 
-uint16_t getCRC16(uint8_t* inPtr, size_t len);
+uint16_t getCRC16(const uint8_t* inPtr, size_t len);
 bool sendCommand(QTcpSocket* tcpclient, uint8_t device_id, uint8_t cmd_id, const std::vector<uint8_t>& cmd_data);
 int ParseResponse(const QByteArray& rawData);
 void handleGetPower(uint8_t id, QByteArray payload, uint8_t totalLen);
@@ -57,6 +58,6 @@ void handleGetCoordinates(uint8_t id, QByteArray payload);
 void handleArrivalTime(uint8_t id, QByteArray payload);
 void handleMultiParams(uint8_t id, QByteArray payload);
 void handleStatus(uint8_t id, QByteArray payload);
-void reportError(QByteArray payload);
+void reportError(uint8_t payload);
 
 #endif
