@@ -1,15 +1,13 @@
-#ifndef PROTOCAL_H
-#define PROTOCAL_H
-
+#ifndef TCPCLIENT_H
+#define TCPCLIENT_H
 #include <QTcpSocket>
-#include <QHostAddress>
-#include <vector>
-#include <cstdint>
 #include <iostream>
-#include <QDebug>
-#include <QByteArray>
-#include <map>
+#include <QString>
+#include <QtGlobal>
+#include <QTimer>
 #include <QtEndian>
+#include <chrono>
+#include <thread>
 
 /*增益表*/
 const int gainValues[] = {-120, 0, 6, 14, 20, 26, 34, 40};
@@ -49,15 +47,52 @@ typedef enum {
     STATUS_GPS_INVALID           = 0x0A,  // GPS无效
 } CommandStatus;
 
-uint16_t getCRC16(const uint8_t* inPtr, size_t len);
-bool sendCommand(QTcpSocket* tcpclient, uint8_t device_id, uint8_t cmd_id, const std::vector<uint8_t>& cmd_data);
-int ParseResponse(const QByteArray& rawData);
-void handleGetPower(uint8_t id, QByteArray payload, uint8_t totalLen);
-void handleGetEnergy(uint8_t id, QByteArray payload);
-void handleGetCoordinates(uint8_t id, QByteArray payload);
-void handleArrivalTime(uint8_t id, QByteArray payload);
-void handleMultiParams(uint8_t id, QByteArray payload);
-void handleStatus(uint8_t id, QByteArray payload);
-void reportError(uint8_t payload);
+typedef enum{
+    FREE                = 0x00,  // 空闲
+    CONNECTED           = 0x01,  // 指令号错误
+    DISCONNECTED        = 0x02,  // 指令内容错误
+}TcpClient_status;
+
+
+class TcpClient : public QTcpSocket
+{
+    Q_OBJECT
+public:
+    TcpClient(const QString & ip, const quint16 port, uint8_t id, QObject *parent = nullptr);
+    ~TcpClient();
+
+    int connectToServer();
+    int disconnectFromServer();
+    void checkConnection();
+    bool sendCommand(uint8_t cmd_id, const std::vector<uint8_t>& cmd_data);
+    uint16_t getCRC16(const uint8_t* inPtr, size_t len);
+
+
+signals:
+    void dataReceived(const QByteArray data); 
+
+public slots:
+    void onReadyRead();
+    void handleDataReceived();
+    void delay_ms(uint32_t ms);
+
+private:
+    CommandStatus status;
+    QString ip;
+    quint16 port;
+    uint8_t id;
+    QTimer * heartbeatTimer;   // 定期检查是否断开连接
+    QByteArray receiveBuffer;
+    int heartbreak_count = 0;
+
+    int ParseResponse(QByteArray& rawData);
+    void handleGetPower(uint8_t id, QByteArray payload, uint8_t totalLen);
+    void handleGetEnergy(uint8_t id, QByteArray payload);
+    void handleGetCoordinates(uint8_t id, QByteArray payload);
+    void handleArrivalTime(uint8_t id, QByteArray payload);
+    void handleMultiParams(uint8_t id, QByteArray payload);
+    void handleStatus(uint8_t id, QByteArray payload);
+    void reportError(uint8_t payload);
+};
 
 #endif

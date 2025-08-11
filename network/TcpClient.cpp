@@ -1,41 +1,51 @@
-#include "protocol.h"
+#include "TcpClient.h"
 
-/**
- * @brief   计算 CRC16-MODBUS 校验值
- * 
- * 本函数使用标准的 CRC16-MODBUS 算法计算输入数据的 16 位 CRC 校验值，
- * 并返回高字节在前、低字节在后的结果（大端格式）。
- * 
- * @param   inPtr  指向输入数据缓冲区的指针
- * @param   len    输入数据的字节长度
- * @return  uint16_t  计算得到的 CRC 校验值（高字节在前）
- * 
- * @note    该算法初始值为 0xFFFF，多项式为 0xA001。
- * 
- * @author  Sun Wenqiang
- * @date    2025-08-09
- * @copyright
- *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
- */
-uint16_t getCRC16(const uint8_t* inPtr, size_t len)
+TcpClient::TcpClient(const QString & ip, const quint16 port, uint8_t id, QObject *parent)
+: QTcpSocket(parent), ip(ip), port(port), id(id)
 {
-    uint16_t crc = 0xffff;
-    uint8_t index;
-    while (len > 0) {
-        crc ^= *inPtr;
-        for (index = 0; index < 8; index++) {
-            if ((crc & 0x0001) == 0)
-                crc = crc >> 1;
-            else {
-                crc = crc >> 1;
-                crc ^= 0xa001;
-            }
-        }
-        len -= 1;
-        inPtr++;
-    }
-    return ((crc & 0x00ff) << 8) | ((crc & 0xff00) >> 8);
+    heartbeatTimer = new QTimer(this);
+    connect(heartbeatTimer, &QTimer::timeout, this, &TcpClient::checkConnection);
+    connect(this, &TcpClient::dataReceived, this, &TcpClient::handleDataReceived);
+    connect(this, &QTcpSocket::readyRead, this, &TcpClient::onReadyRead);
+    connect(this, &QTcpSocket::errorOccurred, [this](){
+        qWarning()<<"Tcp error of "<< this->id <<errorString();
+    });
+    receiveBuffer.clear();  
 }
+
+TcpClient::~TcpClient()
+{
+    disconnectFromServer();
+    heartbeatTimer->stop();
+    disconnect();
+}
+
+int TcpClient::connectToServer()
+{
+    // heartbeatTimer->start(15);   // 检查心跳
+    if (state() == QAbstractSocket::ConnectedState)
+    {
+        return 0;
+    }
+
+    connectToHost(ip, port);
+    return waitForConnected(15000) ? 0 : -1;   // 15秒超时
+}
+
+int TcpClient::disconnectFromServer()
+{
+    if (state() == QAbstractSocket::UnconnectedState)
+    {
+        return 0;
+    }
+    if (state() == QAbstractSocket::ConnectedState)
+    {
+        disconnectFromHost();
+        return 0;
+    }
+    return -1;
+}
+
 
 /**
  * @brief   向指定设备发送 TCP 协议命令
@@ -61,9 +71,9 @@ uint16_t getCRC16(const uint8_t* inPtr, size_t len)
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-bool sendCommand(QTcpSocket* tcpclient, uint8_t device_id, uint8_t cmd_id, const std::vector<uint8_t>& cmd_data)
+bool TcpClient::sendCommand(uint8_t cmd_id, const std::vector<uint8_t>& cmd_data)
 {
-    if (!tcpclient || tcpclient->state() != QAbstractSocket::ConnectedState) {
+    if (state() != QAbstractSocket::ConnectedState) {
         qWarning() << "TCP client is not connected.";
         return false;
     }
@@ -72,7 +82,7 @@ bool sendCommand(QTcpSocket* tcpclient, uint8_t device_id, uint8_t cmd_id, const
     packet.append(0XFF, 0XA5); // Protocol header
     uint8_t len = static_cast<uint8_t>(cmd_data.size() + 7); // Length of the command data + device_id and cmd_id
     packet.append(len);
-    packet.append(device_id);
+    packet.append(id);
     packet.append(cmd_id);
 
     if (!cmd_data.empty()) {
@@ -83,19 +93,92 @@ bool sendCommand(QTcpSocket* tcpclient, uint8_t device_id, uint8_t cmd_id, const
     packet.append(static_cast<char>(crc & 0xFF));
     packet.append(static_cast<char>((crc >> 8) & 0xFF));
     
-    qint64 bytesWritten = tcpclient->write(packet);
+    qint64 bytesWritten = write(packet);
     if (bytesWritten == -1) {
-        qWarning() << "Failed to write to TCP socket:" << tcpclient->errorString();
+        qWarning() << "Failed to write to TCP socket:" << errorString();
         return false;
     } 
 
-    if (!tcpclient->waitForBytesWritten(10)) {
-        qWarning() << "Timeout while waiting for bytes to be written:" << tcpclient->errorString();
+    if (!waitForBytesWritten(10)) {
+        qWarning() << "Timeout while waiting for bytes to be written:" << errorString();
         return false;
     }
 
     qDebug() << "Command sent successfully." << bytesWritten;
     return true;
+}
+
+/**
+ * @brief   计算 CRC16-MODBUS 校验值
+ * 
+ * 本函数使用标准的 CRC16-MODBUS 算法计算输入数据的 16 位 CRC 校验值，
+ * 并返回高字节在前、低字节在后的结果（大端格式）。
+ * 
+ * @param   inPtr  指向输入数据缓冲区的指针
+ * @param   len    输入数据的字节长度
+ * @return  uint16_t  计算得到的 CRC 校验值（高字节在前）
+ * 
+ * @note    该算法初始值为 0xFFFF，多项式为 0xA001。
+ * 
+ * @author  Sun Wenqiang
+ * @date    2025-08-09
+ * @copyright
+ *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
+ */
+uint16_t TcpClient::getCRC16(const uint8_t *inPtr, size_t len)
+{
+    uint16_t crc = 0xffff;
+    uint8_t index;
+    while (len > 0) {
+        crc ^= *inPtr;
+        for (index = 0; index < 8; index++) {
+            if ((crc & 0x0001) == 0)
+                crc = crc >> 1;
+            else {
+                crc = crc >> 1;
+                crc ^= 0xa001;
+            }
+        }
+        len -= 1;
+        inPtr++;
+    }
+    return ((crc & 0x00ff) << 8) | ((crc & 0xff00) >> 8);
+}
+
+
+
+void TcpClient::checkConnection()
+{
+    if (state() == QAbstractSocket::ConnectedState)
+    {
+        heartbreak_count = 0;
+    }
+    else
+    {
+        heartbreak_count++;
+        if (heartbreak_count == 3)
+        {
+            qWarning()<<"Connection error";
+            close();
+        }
+    }
+}
+
+void TcpClient::onReadyRead()
+{
+    receiveBuffer.append(readAll());
+    emit dataReceived(receiveBuffer);
+}
+
+void TcpClient::handleDataReceived()
+{
+    ParseResponse(receiveBuffer);
+    receiveBuffer.clear();
+}
+
+void TcpClient::delay_ms(uint32_t ms)
+{
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
 /**
@@ -125,7 +208,7 @@ bool sendCommand(QTcpSocket* tcpclient, uint8_t device_id, uint8_t cmd_id, const
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-int ParseResponse(const QByteArray& rawData)
+int TcpClient::ParseResponse(QByteArray &rawData)
 {
     if (rawData.isEmpty())
     {
@@ -224,7 +307,7 @@ int ParseResponse(const QByteArray& rawData)
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void handleGetPower(uint8_t id, QByteArray payload, uint8_t totalLen)
+void TcpClient::handleGetPower(uint8_t id, QByteArray payload, uint8_t totalLen)
 {
     if (totalLen == 9) {
         uint16_t adc_val = qFromLittleEndian<uint16_t>((const uchar*)payload.constData());
@@ -252,7 +335,7 @@ void handleGetPower(uint8_t id, QByteArray payload, uint8_t totalLen)
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void handleGetEnergy(uint8_t id, QByteArray payload)
+void TcpClient::handleGetEnergy(uint8_t id, QByteArray payload)
 {
     qDebug()<<QString("Response from node %1: ").arg(id);
     float energy_27k;
@@ -281,7 +364,7 @@ void handleGetEnergy(uint8_t id, QByteArray payload)
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void handleGetCoordinates(uint8_t id, QByteArray payload)
+void TcpClient::handleGetCoordinates(uint8_t id, QByteArray payload)
 {
     qDebug()<<QString("Response from node %1: ").arg(id);
     uint8_t hour = (uint8_t)payload[0];
@@ -318,7 +401,7 @@ void handleGetCoordinates(uint8_t id, QByteArray payload)
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void handleArrivalTime(uint8_t id, QByteArray payload)
+void TcpClient::handleArrivalTime(uint8_t id, QByteArray payload)
 {
     qDebug()<<QString("Response from node %1: ").arg(id);
     uint8_t hour = (uint8_t)payload[0];
@@ -364,7 +447,7 @@ void handleArrivalTime(uint8_t id, QByteArray payload)
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void handleMultiParams(uint8_t id, QByteArray payload)
+void TcpClient::handleMultiParams(uint8_t id, QByteArray payload)
 {
     qDebug()<<QString("Response from node %1: ").arg(id);
     uint8_t magnification = (uint8_t)payload[0];
@@ -396,7 +479,7 @@ void handleMultiParams(uint8_t id, QByteArray payload)
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void handleStatus(uint8_t id, QByteArray payload)
+void TcpClient::handleStatus(uint8_t id, QByteArray payload)
 {
     uint8_t status = (uint8_t)payload[0];
     qDebug()<<QString("Response from node %1: ").arg(id);
@@ -427,7 +510,7 @@ void handleStatus(uint8_t id, QByteArray payload)
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void reportError(uint8_t status)
+void TcpClient::reportError(uint8_t status)
 {
     switch (status)
     {

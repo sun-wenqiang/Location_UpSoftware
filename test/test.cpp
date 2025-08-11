@@ -1,8 +1,10 @@
 #include "../algorithm/algorithm.h"
 #include "../utils/CoordConverter.h"
 #include <iostream>
+#include "test.h"
 
 int main() {
+    /* 
     point2D node1 = {0, 0};
     point2D node2 = {-1.8343242536022,         0.891888149455403};
     point2D node3 = {0.324825134121168,        1.29820720407733};
@@ -42,5 +44,27 @@ int main() {
     // GeoCoord Ecef2Geo(EcefCoord ecef);    // 将ECEF坐标转化为经纬度
 
     std::cout<<"转换回来"<<"longitude = "<<reverse.longitude<<", latitude = "<<reverse.latitude<<", altitude = "<<reverse.altitude<<std::endl;
+    */
+
+    QString ip = "192.168.1.100";
+    quint16 port = 8000;
+    uint8_t id = 0;
+    TcpClient client = TcpClient(ip, port, id);
+    client.connectToServer();
+    client.checkConnection();
+    std::vector<uint8_t> cmd_data = {0xAA};
+    client.sendCommand(CMD_COLLECT_CONTROL, cmd_data);
+
+    while (1)
+    {
+        client.delay_ms(100);
+    }
+    
+
+
+
+
+
+    client.disconnectFromServer();
     return 0;
 }
