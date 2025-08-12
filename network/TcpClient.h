@@ -10,7 +10,18 @@
 #include <thread>
 
 /*增益表*/
-const int gainValues[] = {-120, 0, 6, 14, 20, 26, 34, 40};
+extern const int gainValues[8];
+
+enum ClientState {
+    Disconnected,
+    Connected,
+    Idle,
+    Working,
+    Rebooted,
+    Error,
+    waitingResponse,
+    ResponseTimeout
+};
 
 /**
  * 设备指令枚举
@@ -61,29 +72,34 @@ public:
     TcpClient(const QString & ip, const quint16 port, uint8_t id, QObject *parent = nullptr);
     ~TcpClient();
 
-    int connectToServer();
-    int disconnectFromServer();
+    bool connectToServer();
+    bool disconnectFromServer();
     void checkConnection();
     bool sendCommand(uint8_t cmd_id, const std::vector<uint8_t>& cmd_data);
     uint16_t getCRC16(const uint8_t* inPtr, size_t len);
+    void delay_ms(uint32_t ms);
+    void setStatus(ClientState new_state);
+    ClientState getStatus();
 
 
 signals:
-    void dataReceived(const QByteArray data); 
+    void dataReceived(const QByteArray data);
+    void heartbeatLoss();
 
 public slots:
     void onReadyRead();
     void handleDataReceived();
-    void delay_ms(uint32_t ms);
+    void handleHeartbeatLoss();
 
 private:
-    CommandStatus status;
+    CommandStatus cmd_status;
     QString ip;
     quint16 port;
     uint8_t id;
     QTimer * heartbeatTimer;   // 定期检查是否断开连接
     QByteArray receiveBuffer;
     int heartbreak_count = 0;
+    ClientState status;
 
     int ParseResponse(QByteArray& rawData);
     void handleGetPower(uint8_t id, QByteArray payload, uint8_t totalLen);

@@ -1,5 +1,0 @@
-/home/sun/code/Location_UpSoftware/build/CMakeFiles/Location_upSoftware.dir
-/home/sun/code/Location_UpSoftware/build/CMakeFiles/edit_cache.dir
-/home/sun/code/Location_UpSoftware/build/CMakeFiles/rebuild_cache.dir
-/home/sun/code/Location_UpSoftware/build/CMakeFiles/Location_upSoftware_autogen_timestamp_deps.dir
-/home/sun/code/Location_UpSoftware/build/CMakeFiles/Location_upSoftware_autogen.dir

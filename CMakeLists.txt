@@ -21,16 +21,19 @@ file(GLOB UI_FILES ${CMAKE_SOURCE_DIR}/app/*.ui)
 qt5_wrap_ui(WRAP_FILES ${UI_FILES})
 
 # 4. 找到源文件
-file(GLOB SRC ${CMAKE_SOURCE_DIR}/app/*.cpp)
+file(GLOB SRC1 ${CMAKE_SOURCE_DIR}/app/*.cpp)
+file(GLOB SRC2 ${CMAKE_SOURCE_DIR}/network/*.cpp)
 
 # 5. 包含源码目录和构建目录（构建目录里会生成 ui_xxx.h）
 include_directories(${CMAKE_SOURCE_DIR}/app
-                    ${CMAKE_SOURCE_DIR}/build)
+                    ${CMAKE_SOURCE_DIR}/build
+                    ${CMAKE_SOURCE_DIR}/network)
             
 # 6. 生成可执行文件，前面是文件名，后面是源文件                    
 add_executable(Location_upSoftware main.cpp 
-                ${SRC} 
-                ${WRAP_FILES})  
+                ${SRC1} 
+                ${WRAP_FILES}
+                ${SRC2})  
 
 # 7. 将需要的库链接到可执行文件上                
 target_link_libraries(Location_upSoftware 

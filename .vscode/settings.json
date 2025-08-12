@@ -85,7 +85,8 @@
         "io_context": "cpp",
         "netfwd": "cpp",
         "timer": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "qtimer": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled",
     "C_Cpp.intelliSenseEngine": "default"
