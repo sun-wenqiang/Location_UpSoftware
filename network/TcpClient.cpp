@@ -1,23 +1,137 @@
-#include "protocol.h"
+#include "TcpClient.h"
+#include <QNetworkProxy>
+const int gainValues[8] = {-120, 0, 6, 14, 20, 26, 34, 40};
+
+TcpClient::TcpClient(const QString & ip, const quint16 port, uint8_t id, QObject *parent)
+    : QTcpSocket(parent), ip(ip), port(port), id(id)
+{
+    heartbeatTimer = new QTimer(this);
+    connect(heartbeatTimer, &QTimer::timeout, this, &TcpClient::checkConnection);
+    connect(this, &TcpClient::dataReceived, this, &TcpClient::handleDataReceived);
+    connect(this, &QTcpSocket::readyRead, this, &TcpClient::onReadyRead);
+    connect(this, &QTcpSocket::errorOccurred, this, [this](QAbstractSocket::SocketError socketError){
+        qWarning() << "Tcp error of" << this->id << socketError << errorString();
+    });
+    connect(this, &TcpClient::heartbeatLoss, this, &TcpClient::handleHeartbeatLoss);
+    this->setProxy(QNetworkProxy::NoProxy);
+    receiveBuffer.clear();
+}
+
+TcpClient::~TcpClient()
+{
+    disconnectFromServer();
+    heartbeatTimer->stop();
+    disconnect();
+}
+
+bool TcpClient::connectToServer()
+{
+    // heartbeatTimer->start(15);   // 检查心跳
+    if (state() == QAbstractSocket::ConnectedState)
+    {
+        return true;
+    }
+
+    connectToHost(ip, port);
+    return waitForConnected(15000) ? true : false;   // 15秒超时
+}
+
+bool TcpClient::disconnectFromServer()
+{
+    if (state() == QAbstractSocket::UnconnectedState)
+    {
+        return true;
+    }
+    if (state() == QAbstractSocket::ConnectedState)
+    {
+        disconnectFromHost();
+        return true;
+    }
+    return false;
+}
+
 
 /**
- * @brief   计算 CRC16-MODBUS 校验值
- * 
- * 本函数使用标准的 CRC16-MODBUS 算法计算输入数据的 16 位 CRC 校验值，
- * 并返回高字节在前、低字节在后的结果（大端格式）。
- * 
- * @param   inPtr  指向输入数据缓冲区的指针
- * @param   len    输入数据的字节长度
- * @return  uint16_t  计算得到的 CRC 校验值（高字节在前）
- * 
- * @note    该算法初始值为 0xFFFF，多项式为 0xA001。
- * 
+ * @brief   向指定设备发送 TCP 协议命令
+ *
+ * 本函数按照自定义协议格式，向指定设备 ID 发送命令数据。
+ * 协议格式为：
+ *   [帧头 0xFF 0xA5][数据总长度][设备ID][命令ID][命令数据...][CRC16低字节][CRC16高字节]
+ * 其中 CRC16 使用 getCRC16(...) 计算，初始值为 0xFFFF，多项式 0xA001。
+ *
+ * @param   tcpclient   指向已连接的 QTcpSocket 对象的指针
+ * @param   device_id   目标设备 ID
+ * @param   cmd_id      命令 ID
+ * @param   cmd_data    命令数据内容（不含协议头和 CRC）
+ * @return  bool        发送成功返回 true，发送失败返回 false
+ *
+ * @note    函数内部会检查 TCP 连接状态，若未连接则直接返回 false。
+ *          等待写入超时时间为 10 毫秒。
+ *
+ * @see     getCRC16()
+ *
  * @author  Sun Wenqiang
  * @date    2025-08-09
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-uint16_t getCRC16(uint8_t* inPtr, size_t len)
+bool TcpClient::sendCommand(uint8_t cmd_id, const std::vector<uint8_t>& cmd_data)
+{
+    if (state() != QAbstractSocket::ConnectedState) {
+        qWarning() << "TCP client is not connected.";
+        return false;
+    }
+
+    QByteArray packet;
+    const char header[2] = { char(0xFF), char(0xA5) };
+    packet.append(header, 2); // Protocol header
+
+    uint8_t len = static_cast<uint8_t>(cmd_data.size() + 7); // Length of the command data + device_id and cmd_id
+    packet.append(len);
+    packet.append(id);
+    packet.append(cmd_id);
+
+    if (!cmd_data.empty()) {
+        packet.append(reinterpret_cast<const char*>(cmd_data.data()), static_cast<int>(cmd_data.size()));
+    }
+
+    uint16_t crc = getCRC16(reinterpret_cast<const uint8_t*>(packet.constData()), static_cast<size_t>(packet.size()));
+    packet.append(static_cast<char>(crc & 0xFF));
+    packet.append(static_cast<char>((crc >> 8) & 0xFF));
+
+    qint64 bytesWritten = write(packet);
+    if (bytesWritten == -1) {
+        qWarning() << "Failed to write to TCP socket:" << errorString();
+        return false;
+    }
+
+    if (!waitForBytesWritten(10)) {
+        qWarning() << "Timeout while waiting for bytes to be written:" << errorString();
+        return false;
+    }
+
+    qDebug() << "Command sent successfully." << bytesWritten;
+    return true;
+}
+
+/**
+ * @brief   计算 CRC16-MODBUS 校验值
+ *
+ * 本函数使用标准的 CRC16-MODBUS 算法计算输入数据的 16 位 CRC 校验值，
+ * 并返回高字节在前、低字节在后的结果（大端格式）。
+ *
+ * @param   inPtr  指向输入数据缓冲区的指针
+ * @param   len    输入数据的字节长度
+ * @return  uint16_t  计算得到的 CRC 校验值（高字节在前）
+ *
+ * @note    该算法初始值为 0xFFFF，多项式为 0xA001。
+ *
+ * @author  Sun Wenqiang
+ * @date    2025-08-09
+ * @copyright
+ *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
+ */
+uint16_t TcpClient::getCRC16(const uint8_t *inPtr, size_t len)
 {
     uint16_t crc = 0xffff;
     uint8_t index;
@@ -37,95 +151,76 @@ uint16_t getCRC16(uint8_t* inPtr, size_t len)
     return ((crc & 0x00ff) << 8) | ((crc & 0xff00) >> 8);
 }
 
-/**
- * @brief   向指定设备发送 TCP 协议命令
- * 
- * 本函数按照自定义协议格式，向指定设备 ID 发送命令数据。
- * 协议格式为：
- *   [帧头 0xFF 0xA5][数据总长度][设备ID][命令ID][命令数据...][CRC16低字节][CRC16高字节]
- * 其中 CRC16 使用 getCRC16(...) 计算，初始值为 0xFFFF，多项式 0xA001。
- * 
- * @param   tcpclient   指向已连接的 QTcpSocket 对象的指针
- * @param   device_id   目标设备 ID
- * @param   cmd_id      命令 ID
- * @param   cmd_data    命令数据内容（不含协议头和 CRC）
- * @return  bool        发送成功返回 true，发送失败返回 false
- * 
- * @note    函数内部会检查 TCP 连接状态，若未连接则直接返回 false。
- *          等待写入超时时间为 10 毫秒。
- * 
- * @see     getCRC16()
- * 
- * @author  Sun Wenqiang
- * @date    2025-08-09
- * @copyright
- *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
- */
-bool sendCommand(QTcpSocket* tcpclient, uint8_t device_id, uint8_t cmd_id, const std::vector<uint8_t>& cmd_data)
+
+
+void TcpClient::checkConnection()
 {
-    if (!tcpcliend || tcpclient->state() != QAbstractSocket::ConnectedState) {
-        qWarning << "TCP client is not connected.";
-        return false;
+    if (state() == QAbstractSocket::ConnectedState)
+    {
+        heartbreak_count = 0;
     }
-
-    QByteArray packet;
-    packet.append(0XFF, 0XA5); // Protocol header
-    uint8_t len = static_cast<uint8_t>(cmd_data.size() + 7); // Length of the command data + device_id and cmd_id
-    packet.append(len);
-    packet.append(device_id);
-    packet.append(cmd_id);
-
-    if (!cmd_data.empty()) {
-        packet.append(reinterpret_cast<const char*>(cmd_data.data()), static_cast<int>(cmd_data.size()));
+    else
+    {
+        heartbreak_count++;
+        if (heartbreak_count == 3)
+        {
+            emit heartbeatLoss();
+        }
     }
+}
 
-    uint16_t crc = getCRC16(reinterpret_cast<uint8_t*>(packet.constData()), static_cast<size_t>(packet.size()));
-    packet.append(static_cast<char>(crc & 0xFF));
-    packet.append(static_cast<char>((crc >> 8) & 0xFF));
-    
-    qint64 bytesWritten = tcpclient->write(packet);
-    if (bytesWritten == -1) {
-        qWarning() << "Failed to write to TCP socket:" << tcpclient->errorString();
-        return false;
-    } 
+void TcpClient::handleHeartbeatLoss()
+{
+    qWarning() << "Heartbeat lost from server:"
+               << this->peerAddress().toString()
+               << "Error:" << this->errorString();
+}
 
-    if (!tcpclient->waitForBytesWritten(10)) {
-        qWarning() << "Timeout while waiting for bytes to be written:" << tcpclient->errorString();
-        return false;
-    }
+void TcpClient::onReadyRead()
+{
+    receiveBuffer.append(readAll());
+    emit dataReceived(receiveBuffer);
+}
 
-    qDebug() << "Command sent successfully." << bytesWritten;
-    return true;
+void TcpClient::handleDataReceived()
+{
+    ParseResponse(receiveBuffer);
+    receiveBuffer.clear();
+}
+
+void TcpClient::delay_ms(uint32_t ms)
+{
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
 /**
  * @brief   解析 TCP 接收到的响应数据帧
- * 
+ *
  * 本函数从原始 TCP 接收数据中查找帧头 (0xFF 0xA5)，校验数据长度和 CRC，
  * 若校验通过则解析出设备 ID、命令 ID 和数据负载，并分发到对应的处理函数。
- * 
+ *
  * 数据帧结构：
  *   [帧头 0xFF 0xA5][总长度][设备ID][命令ID][数据负载...][CRC16低字节][CRC16高字节]
- * 
+ *
  * @param   rawData  从 TCP 套接字接收到的原始字节数组
  * @return  int      成功返回 0，失败返回 -1（无数据 / 帧头错误 / 长度不足 / CRC 错误）
- * 
+ *
  * @note    函数会根据命令 ID 调用 handleGetPower、handleStatus、handleGetEnergy、
  *          handleGetCoordinates、handleArrivalTime、handleMultiParams 等对应的业务处理函数。
- * 
+ *
  * @see     getCRC16(), handleGetPower(), handleStatus(), handleGetEnergy(),
  *          handleGetCoordinates(), handleArrivalTime(), handleMultiParams()
- * 
+ *
  * @warning CRC 使用小端格式解析 (qFromLittleEndian)
- * 
+ *
  * @todo    若未来增加新的命令 ID，需要在 switch 中添加相应的 case 分支。
- * 
+ *
  * @author  Sun Wenqiang
  * @date    2025-08-09
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-int ParseResponse(const QByteArray& rawData)
+int TcpClient::ParseResponse(QByteArray &rawData)
 {
     if (rawData.isEmpty())
     {
@@ -155,7 +250,7 @@ int ParseResponse(const QByteArray& rawData)
 
     QByteArray frame = rawData.mid(headIdx, totalLen);
     uint16_t crcReceived = qFromLittleEndian<uint16_t>((const uchar*)frame.constData() + totalLen - 2);
-    uint16_t crcCalculated = getCRC16((uint8_t*)frame.constData(), totalLen - 2);
+    uint16_t crcCalculated = getCRC16((const uint8_t*)frame.constData(), totalLen - 2);
     if (crcReceived != crcCalculated) {
         qDebug() << "Cheeck CRC failed!!!";
         return -1;
@@ -170,68 +265,68 @@ int ParseResponse(const QByteArray& rawData)
 
     switch (cmd)
     {
-        case CMD_GET_POWER:
-            handleGetPower(id, payload, totalLen);
-            break;
-        case CMD_COLLECT_CONTROL:
-        case CMD_QUERY_GPS_STATUS:
-        case CMD_REBOOT:
-        case CMD_GET_RAW_SIGNAL:
-            handleStatus(id, payload);
-            break;
-        case CMD_SET_AMPLIFICATION:
-        case CMD_SET_DEVICE_ID:
-        case CMD_SET_ENERGY_THRESHOLD:
-        case CMD_SET_DETECT_FREQUENCY:
-        case CMD_SET_RATIO_THRESHOLD:
-            handleStatus(id, payload);
-            break;
-        case CMD_GET_ENERGY:
-            handleGetEnergy(id, payload);
-            break;
-        case CMD_GET_COORDINATES:
-            handleGetCoordinates(id, payload);
-            break;
-        case CMD_SIGNAL_ARRIVAL_TIME:
-            handleArrivalTime(id, payload);
-            break;
-        case CMD_GET_MULTI_PARAMS:
-            handleMultiParams(id, payload);
-            break;
-        default:
-            qDebug() << QString("Unknown cmd id  0x%1").arg(cmd, 2, 16, QLatin1Char('0'));
-            break;
+    case CMD_GET_POWER:
+        handleGetPower(id, payload, totalLen);
+        break;
+    case CMD_COLLECT_CONTROL:
+    case CMD_QUERY_GPS_STATUS:
+    case CMD_REBOOT:
+    case CMD_GET_RAW_SIGNAL:
+        handleStatus(id, payload);
+        break;
+    case CMD_SET_AMPLIFICATION:
+    case CMD_SET_DEVICE_ID:
+    case CMD_SET_ENERGY_THRESHOLD:
+    case CMD_SET_DETECT_FREQUENCY:
+    case CMD_SET_RATIO_THRESHOLD:
+        handleStatus(id, payload);
+        break;
+    case CMD_GET_ENERGY:
+        handleGetEnergy(id, payload);
+        break;
+    case CMD_GET_COORDINATES:
+        handleGetCoordinates(id, payload);
+        break;
+    case CMD_SIGNAL_ARRIVAL_TIME:
+        handleArrivalTime(id, payload);
+        break;
+    case CMD_GET_MULTI_PARAMS:
+        handleMultiParams(id, payload);
+        break;
+    default:
+        qDebug() << QString("Unknown cmd id  0x%1").arg(cmd, 2, 16, QLatin1Char('0'));
+        break;
     }
-
+    return 0;
 }
 
 /**
  * @brief   处理“获取电量”指令的响应数据
- * 
+ *
  * 根据响应帧长度解析电量 ADC 值并计算对应电压，或报告错误码。
- * 
+ *
  * @param   id         设备节点 ID
  * @param   payload    指令内容数据（不包含包头、长度、ID、命令号和 CRC）
  * @param   totalLen   当前响应帧的总长度
- * 
+ *
  * @note    当 totalLen 为 9 时，payload 前 2 字节为 ADC 值，计算电压；
  *          当 totalLen 为 8 时，payload 第 1 字节为错误码，调用 reportError() 处理。
- * 
+ *
  * @return  void
- * 
+ *
  * @author  Sun Wenqiang
  * @date    2025-08-09
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void handleGetPower(uint8_t id, QByteArray payload, uint8_t totalLen)
+void TcpClient::handleGetPower(uint8_t id, QByteArray payload, uint8_t totalLen)
 {
     if (totalLen == 9) {
         uint16_t adc_val = qFromLittleEndian<uint16_t>((const uchar*)payload.constData());
         double voltage = (double)adc_val / 4095.0 * 3.1 * 11 + 0.1;
         qDebug() << QString("ADC = %1, voltage = %2 V").arg(adc_val).arg(voltage, 0, 'f', 2);
     } else if (totalLen == 8) {
-        reportError((uint8_t)payload[0]);
+        reportError(payload[0]);
     } else {
         qDebug() << "Power length wrong!";
     }
@@ -239,20 +334,20 @@ void handleGetPower(uint8_t id, QByteArray payload, uint8_t totalLen)
 
 /**
  * @brief   处理“获取能量”指令的响应数据
- * 
+ *
  * 解析并打印 27kHz 和 30kHz 频率下的能量值，数据均为 4 字节单精度浮点数。
- * 
+ *
  * @param   id       设备节点 ID
  * @param   payload  指令内容数据，包含两个连续的 float 值，分别对应 27kHz 和 30kHz 的能量
- * 
+ *
  * @return  void
- * 
+ *
  * @author  Sun Wenqiang
  * @date    2025-08-09
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void handleGetEnergy(uint8_t id, QByteArray payload)
+void TcpClient::handleGetEnergy(uint8_t id, QByteArray payload)
 {
     qDebug()<<QString("Response from node %1: ").arg(id);
     float energy_27k;
@@ -260,28 +355,28 @@ void handleGetEnergy(uint8_t id, QByteArray payload)
     float energy_30k;
     memcpy(&energy_30k, payload.constData() + 4, 4);
     qDebug() << QString("Energy of 27kHz: %1, energy of 30kHz: %2")
-                .arg(energy_27k, 0, 'f', 6)
-                .arg(energy_30k, 0, 'f', 6);
+                    .arg(energy_27k, 0, 'f', 6)
+                    .arg(energy_30k, 0, 'f', 6);
 
 }
 
 
 /**
  * @brief   处理“获取经纬度”指令的响应数据
- * 
+ *
  * 解析 PPS 时间（时、分、秒）及经度和纬度，均为单精度浮点数，打印结果。
- * 
+ *
  * @param   id       设备节点 ID
  * @param   payload  指令内容数据，前3字节为时分秒，后8字节分别为经度和纬度（float）
- * 
+ *
  * @return  void
- * 
+ *
  * @author  Sun Wenqiang
  * @date    2025-08-09
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void handleGetCoordinates(uint8_t id, QByteArray payload)
+void TcpClient::handleGetCoordinates(uint8_t id, QByteArray payload)
 {
     qDebug()<<QString("Response from node %1: ").arg(id);
     uint8_t hour = (uint8_t)payload[0];
@@ -291,17 +386,17 @@ void handleGetCoordinates(uint8_t id, QByteArray payload)
     memcpy(&lon, payload.constData() + 3, 4);
     memcpy(&lat, payload.constData() + 7, 4);
     qDebug() << QString("PPS: %1:%2:%3").arg(hour, 2, 10, QLatin1Char('0'))
-                                                .arg(minute, 2, 10, QLatin1Char('0'))
-                                                .arg(second, 2, 10, QLatin1Char('0'));
+                    .arg(minute, 2, 10, QLatin1Char('0'))
+                    .arg(second, 2, 10, QLatin1Char('0'));
     qDebug() << QString("longitude: %1, latitude: %2").arg(lon, 0, 'f', 9).arg(lat, 0, 'f', 9);
 }
 
 /**
  * @brief   处理“信号到达时间”指令的响应数据
- * 
+ *
  * 解析时间（时、分、秒）、DMA 相关计数值、剩余计数和能量数据，
  * 并计算时间偏移量，打印到达时间、偏移量及 27kHz 能量值。
- * 
+ *
  * @param   id       设备节点 ID
  * @param   payload  指令内容数据，结构包含：
  *                  - 0-2字节：小时、分钟、秒
@@ -310,15 +405,15 @@ void handleGetCoordinates(uint8_t id, QByteArray payload)
  *                  - 11-12字节：Remain_last (uint16_t)
  *                  - 13-14字节：Arrival_time (uint16_t)
  *                  - 15-18字节：27kHz能量 (float)
- * 
+ *
  * @return  void
- * 
+ *
  * @author  Sun Wenqiang
  * @date    2025-08-09
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void handleArrivalTime(uint8_t id, QByteArray payload)
+void TcpClient::handleArrivalTime(uint8_t id, QByteArray payload)
 {
     qDebug()<<QString("Response from node %1: ").arg(id);
     uint8_t hour = (uint8_t)payload[0];
@@ -337,34 +432,34 @@ void handleArrivalTime(uint8_t id, QByteArray payload)
                     Arrival_time / 1705.0 * 0.02;
 
     qDebug() << QString("Arrival time: %1:%2:%3").arg(hour, 2, 10, QLatin1Char('0'))
-                                             .arg(minute, 2, 10, QLatin1Char('0'))
-                                             .arg(second, 2, 10, QLatin1Char('0'));
+                    .arg(minute, 2, 10, QLatin1Char('0'))
+                    .arg(second, 2, 10, QLatin1Char('0'));
     qDebug() << QString("With offset %1").arg(offset, 0, 'f', 5);
     qDebug() << QString("The energy of 27kHz is %1").arg(energy_27k, 0, 'f', 5);
 }
 
 /**
  * @brief   处理“获取多参数”指令的响应数据
- * 
+ *
  * 解析当前放大倍数、检测能量阈值、检测频率和检测比值阈值，并打印相关信息。
- * 
+ *
  * @param   id       设备节点 ID
  * @param   payload  指令内容数据，结构包含：
  *                  - 0字节：放大倍数索引 (uint8_t)
  *                  - 1-2字节：检测能量阈值 (uint16_t)
  *                  - 3-4字节：检测频率 (uint16_t)
  *                  - 5字节：检测比值阈值 (uint8_t)
- * 
+ *
  * @return  void
- * 
+ *
  * @note    gainValues 为预定义的放大倍数数组，索引对应放大倍数。
- * 
+ *
  * @author  Sun Wenqiang
  * @date    2025-08-09
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void handleMultiParams(uint8_t id, QByteArray payload)
+void TcpClient::handleMultiParams(uint8_t id, QByteArray payload)
 {
     qDebug()<<QString("Response from node %1: ").arg(id);
     uint8_t magnification = (uint8_t)payload[0];
@@ -373,30 +468,30 @@ void handleMultiParams(uint8_t id, QByteArray payload)
     uint8_t ratio = (uint8_t)payload[5];
 
     qDebug() << QString("Magnification factor: %1 dB, detection frequency: %2 Hz, detection energy threshold: %3, detection ratio threshold: %4")
-                .arg(gainValues[magnification])
-                .arg(frequency)
-                .arg(threshold)
-                .arg(ratio);
+                    .arg(gainValues[magnification])
+                    .arg(frequency)
+                    .arg(threshold)
+                    .arg(ratio);
 }
 
 /**
  * @brief   处理通用状态响应指令
- * 
+ *
  * 根据状态码打印成功信息或调用错误报告函数处理错误状态。
- * 
+ *
  * @param   id       设备节点 ID
  * @param   payload  指令内容数据，首字节为状态码 (uint8_t)
- * 
+ *
  * @return  void
- * 
+ *
  * @see     reportError()
- * 
+ *
  * @author  Sun Wenqiang
  * @date    2025-08-09
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void handleStatus(uint8_t id, QByteArray payload)
+void TcpClient::handleStatus(uint8_t id, QByteArray payload)
 {
     uint8_t status = (uint8_t)payload[0];
     qDebug()<<QString("Response from node %1: ").arg(id);
@@ -406,30 +501,29 @@ void handleStatus(uint8_t id, QByteArray payload)
         qDebug()<<"Successful.";
         break;
     default:
-        reportError(status);
+        reportError(payload[0]);
         break;
     }
 }
 
 /**
  * @brief   根据状态码打印错误信息
- * 
+ *
  * 解析状态码并输出对应的错误提示信息，用于命令响应错误处理。
- * 
+ *
  * @param   payload  指令内容数据，首字节为状态码 (uint8_t)
- * 
+ *
  * @return  void
- * 
+ *
  * @note    状态码定义见 CommandStatus 枚举。
- * 
+ *
  * @author  Sun Wenqiang
  * @date    2025-08-09
  * @copyright
  *          Copyright (c) 2025 Sun Wenqiang. All rights reserved.
  */
-void reportError(QByteArray payload)
+void TcpClient::reportError(uint8_t status)
 {
-    uint8_t status = (uint8_t)payload[0];
     switch (status)
     {
     case STATUS_CMD_INVALID:
@@ -455,3 +549,18 @@ void reportError(QByteArray payload)
         break;
     }
 }
+
+void TcpClient::setStatus(ClientState new_state)
+{
+    this->status = new_state;
+}
+
+ClientState TcpClient::getStatus()
+{
+    return this->status;
+}
+
+
+
+
+
