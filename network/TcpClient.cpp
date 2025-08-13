@@ -297,6 +297,7 @@ int TcpClient::ParseResponse(QByteArray &rawData)
         qDebug() << QString("Unknown cmd id  0x%1").arg(cmd, 2, 16, QLatin1Char('0'));
         break;
     }
+    emit receiveResponse(cmd);
     return 0;
 }
 

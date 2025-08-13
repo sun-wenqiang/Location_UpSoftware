@@ -10,6 +10,9 @@ set(CMAKE_AUTOMOC ON)
 # 自动处理QT的资源文件（.qrc），包含图片、图标等等  
 set(CMAKE_AUTORCC ON)   
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+endif()
 
 # 1. 找到 Qt5 Widgets 模块
 find_package(Qt5 COMPONENTS Widgets Network REQUIRED)

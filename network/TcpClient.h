@@ -85,6 +85,7 @@ public:
 signals:
     void dataReceived(const QByteArray data);
     void heartbeatLoss();
+    void receiveResponse(uint8_t cmd);
 
 public slots:
     void onReadyRead();
