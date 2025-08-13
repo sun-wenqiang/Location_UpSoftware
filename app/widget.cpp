@@ -1,18 +1,59 @@
 #include "widget.h"
 #include "ui_widget.h"
 #include "TcpClient.h"
+#include <QPushButton>
+#include <QLabel>
 
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::Widget), manager(new Manager)
 {
     ui->setupUi(this);
+
+    for (int i = 0; i < 6; i++)
+    {
+        QPushButton* bnt = nullptr;
+        QLabel* label = nullptr;
+        switch(i)
+        {
+            case 0: bnt = ui->node0Button; label = ui->node0Label; break;
+            case 1: bnt = ui->node1Button; label = ui->node1Label; break;
+            case 2: bnt = ui->node2Button; label = ui->node2Label; break;
+            case 3: bnt = ui->node3Button; label = ui->node3Label; break;
+            case 4: bnt = ui->node4Button; label = ui->node4Label; break;
+            case 5: bnt = ui->node5Button; label = ui->node5Label; break;
+        }
+
+        connect(bnt, &QPushButton::clicked, this, [this, bnt, i](){
+            bool connected = manager->clients[i]->connectToServer();
+            if (connected)
+            {
+                bnt->setText("已连接");
+                bnt->setStyleSheet("background-color: green;");
+                printConnect(QString("与节点%1建立连接成功").arg(i));
+            }
+            else
+            {
+                bnt->setText("连接");
+                bnt->setStyleSheet("background-color: white;");
+                printConnect(QString("与节点%1建立连接失败").arg(i));
+            }
+        });
+    }
+
+    connect(Manager, &Manager::obtainResult, this, &Widget::handleObtainResult);
 }
 
 Widget::~Widget()
 {
     delete ui;
     delete manager;
+}
+
+void Widget::handleObtainResult(const sourcePosition& ans)
+{
+    printLog(QString("x: %1, y: %2").arg(ans.enu.x, ans.enu.y));
+    printTrack(QString("x: %1, y: %2, longitude: %3, latitude: %4").arg(ans.enu.x, ans.enu.y, ans.geo.longitude, ans.geo.latitude));
 }
 
 int Widget::get_id()
@@ -97,36 +138,20 @@ void Widget::on_rebootButton_clicked()
 
 void Widget::on_elseButton_clicked()
 {
-    
+
 }
 
-
-void Widget::on_node0Button_clicked()
+void Widget::printLog(const QString& log)
 {
-    bool connedted = manager->clients[0]->connectToServer();
+    ui->logText->append(log);
 }
 
-void Widget::on_node1Button_clicked()
+void Widget::printConnect(const QString& connect_log)
 {
-    bool connedted = manager->clients[1]->connectToServer();
+    ui->connectText->append(connect_log);
 }
 
-void Widget::on_node2Button_clicked()
+void Widget::printTrack(const QString& track_log)
 {
-    bool connedted = manager->clients[2]->connectToServer();
-}
-
-void Widget::on_node3Button_clicked()
-{
-    bool connedted = manager->clients[3]->connectToServer();
-}
-
-void Widget::on_node4Button_clicked()
-{
-    bool connedted = manager->clients[4]->connectToServer();
-}
-
-void Widget::on_node5Button_clicked()
-{
-    bool connedted = manager->clients[5]->connectToServer();
+    ui->trackText->append(track_log);
 }

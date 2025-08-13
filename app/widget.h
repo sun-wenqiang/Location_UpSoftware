@@ -43,20 +43,13 @@ private slots:
 
     void on_elseButton_clicked();
 
-    void on_node0Button_clicked();
-
-    void on_node1Button_clicked();
-
-    void on_node2Button_clicked();
-
-    void on_node3Button_clicked();
-
-    void on_node4Button_clicked();
-
-    void on_node5Button_clicked();
+    void handleObtainResult(const std::vector<double>& ans)
 
 private:
     Ui::Widget *ui;
     Manager * manager;
+    void printLog(const QString& log);
+    void printConnect(const QString& connect_log);
+    void printTrack(const QString& track_log);
 };
 #endif // WIDGET_H
