@@ -297,6 +297,7 @@ int TcpClient::ParseResponse(QByteArray &rawData)
         qDebug() << QString("Unknown cmd id  0x%1").arg(cmd, 2, 16, QLatin1Char('0'));
         break;
     }
+    emit receiveResponse(cmd);
     return 0;
 }
 
@@ -430,12 +431,22 @@ void TcpClient::handleArrivalTime(uint8_t id, QByteArray payload)
     double offset = (DMA_num_now - DMA_num_last - 3) * 0.01 +
                     Remain_last / 3410.0 * 0.01 +
                     Arrival_time / 1705.0 * 0.02;
+    
+    Info_ArrivalTime node_arrivalTime;
+    NodeInfo node_info;
+    if (readNodeInfo("nodes_info.json", id, node_info))
+    {
+        node_arrivalTime.corrd.altitude = node_info.altitude;
+        node_arrivalTime.corrd.latitude = node_info.latitude;
+        node_arrivalTime.corrd.longitude = node_info.longitude;
+        node_arrivalTime.time.hour = hour;
+        node_arrivalTime.time.minute = minute;
+        node_arrivalTime.time.second = second;
+        node_arrivalTime.offset = offset;
+        node_arrivalTime.id = id;
 
-    qDebug() << QString("Arrival time: %1:%2:%3").arg(hour, 2, 10, QLatin1Char('0'))
-                    .arg(minute, 2, 10, QLatin1Char('0'))
-                    .arg(second, 2, 10, QLatin1Char('0'));
-    qDebug() << QString("With offset %1").arg(offset, 0, 'f', 5);
-    qDebug() << QString("The energy of 27kHz is %1").arg(energy_27k, 0, 'f', 5);
+        emit receiveArrivalTime(node_arrivalTime);
+    }
 }
 
 /**
@@ -560,7 +571,98 @@ ClientState TcpClient::getStatus()
     return this->status;
 }
 
+bool readNodeInfo(const QString &filename, int nodeID, NodeInfo &node)
+{
+    QFile file(filename);
 
+    if (!file.open(QIODevice::ReadOnly))
+    {
+        qWarning()<<"Cannot open file: "  << filename;
+        return false;
+    }
 
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    file.close();
 
+    if (!doc.isObject())
+    {
+        return false;
+    }
 
+    QJsonObject rootObj = doc.object();
+    QJsonArray nodesArray = rootObj.value("nodes").toArray();
+
+    for (auto nodeVal:nodesArray)
+    {
+        QJsonObject obj = nodeVal.toObject();
+        if (obj.value("id").toInt() == nodeID)
+        {
+            node.id = obj.value("id").toInt();
+            node.ip = obj.value("ip").toString();
+            node.port = static_cast<quint16>(obj.value("port").toInt());
+            node.longitude = obj.value("longitude").toDouble();
+            node.latitude = obj.value("latitude").toDouble();
+            node.altitude = obj.value("altitude").toDouble();
+            return true;
+        }
+    }
+    return false;
+}
+
+bool updateNodeInfo(const QString &filename, NodeInfo &node)
+{
+    QFile file(filename);
+
+    if (!file.open(QIODevice::ReadOnly))
+    {
+        qWarning()<<"Cannot open file: "  << filename;
+        return false;
+    }
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    file.close();
+
+    if (!doc.isObject())
+    {
+        return false;
+    }
+
+    QJsonObject rootObj = doc.object();
+    QJsonArray nodesArray = rootObj.value("nodes").toArray();
+    bool updated = false;
+
+    for (int i = 0; i < nodesArray.size(); i++)
+    {
+        QJsonObject obj = nodesArray[i].toObject();
+        if (obj.value("id").toInt() == node.id)
+        {
+            obj["ip"] = node.ip;
+            obj["port"] = node.port;
+            obj["longitude"] = node.longitude;
+            obj["latitude"] = node.latitude;
+            obj["altitude"] = node.altitude;
+            nodesArray[i] = obj;
+            updated = true;
+            break;
+        }
+    }
+
+    if (!updated) {
+        qWarning() << "Node id" << node.id << "not found, cannot update";
+        return false;
+    }
+
+    rootObj["nodes"] = nodesArray;
+    doc.setObject(rootObj);
+
+    if (!file.open(QIODevice::WriteOnly))
+    {
+        qWarning() << "Cannot open file for writing:" << filename;
+        return false;
+    }
+
+    file.write(doc.toJson(QJsonDocument::Indented));
+    file.close();
+
+    return true;
+}

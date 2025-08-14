@@ -8,6 +8,12 @@
 #include <QtEndian>
 #include <chrono>
 #include <thread>
+#include "CoordConverter.h"
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include "CoordConverter.h"
 
 /*增益表*/
 extern const int gainValues[8];
@@ -64,6 +70,29 @@ typedef enum{
     DISCONNECTED        = 0x02,  // 指令内容错误
 }TcpClient_status;
 
+struct Time{
+    int hour;
+    int minute;
+    int second;
+};
+
+struct Info_ArrivalTime{
+    int id;
+    GeoCoord corrd;
+    Time time;
+    double offset;
+    bool used;
+};
+
+struct NodeInfo{
+    int id;
+    QString ip;
+    quint16 port;
+    double longitude;
+    double latitude;
+    double altitude;
+};
+
 
 class TcpClient : public QTcpSocket
 {
@@ -85,6 +114,8 @@ public:
 signals:
     void dataReceived(const QByteArray data);
     void heartbeatLoss();
+    void receiveResponse(uint8_t cmd);
+    void receiveArrivalTime(Info_ArrivalTime& arrival_info);
 
 public slots:
     void onReadyRead();
@@ -110,5 +141,9 @@ private:
     void handleStatus(uint8_t id, QByteArray payload);
     void reportError(uint8_t payload);
 };
+
+
+bool readNodeInfo(const QString& filename, int nodeID, NodeInfo& node);
+bool updateNodeInfo(const QString& filename, NodeInfo& node);
 
 #endif

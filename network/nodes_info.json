@@ -1,0 +1,52 @@
+{
+    "nodes": [
+        {
+            "id": 0,
+            "ip": "192.168.1.160",
+            "port": 5000,
+            "longitude": 120.0,
+            "latitude": 35.0,
+            "altitude": 10.0
+        },
+        {
+            "id": 1,
+            "ip": "192.168.1.161",
+            "port": 5001,
+            "longitude": 121.0,
+            "latitude": 36.0,
+            "altitude": 10.0
+        },
+        {
+            "id": 2,
+            "ip": "192.168.1.162",
+            "port": 5002,
+            "longitude": 122.0,
+            "latitude": 37.0,
+            "altitude": 10.0
+        },
+        {
+            "id": 3,
+            "ip": "192.168.1.163",
+            "port": 5003,
+            "longitude": 123.0,
+            "latitude": 38.0,
+            "altitude": 10.0
+        },
+        {
+            "id": 4,
+            "ip": "192.168.1.164",
+            "port": 5004,
+            "longitude": 124.0,
+            "latitude": 39.0,
+            "altitude": 10.0
+        },
+        {
+            "id": 5,
+            "ip": "192.168.1.165",
+            "port": 5005,
+            "longitude": 125.0,
+            "latitude": 40.0,
+            "altitude": 10.0
+        }
+    ]
+}

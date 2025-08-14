@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include "TcpClient.h"
+#include "manager.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -17,6 +18,7 @@ class Widget : public QWidget
 public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
+    int get_id();
 
 private slots:
     void on_startButton_clicked();
@@ -41,9 +43,13 @@ private slots:
 
     void on_elseButton_clicked();
 
-    void on_node0Button_clicked();
+    void handleObtainResult(const sourcePosition& ans);
 
 private:
     Ui::Widget *ui;
+    Manager * manager;
+    void printLog(const QString& log);
+    void printConnect(const QString& connect_log);
+    void printTrack(const QString& track_log);
 };
 #endif // WIDGET_H

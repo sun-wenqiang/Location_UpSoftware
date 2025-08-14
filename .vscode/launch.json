@@ -5,7 +5,7 @@
             "name": "(gdb) 启动",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/test/build/app",
+            "program": "${workspaceFolder}/build/Location_upSoftware",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
