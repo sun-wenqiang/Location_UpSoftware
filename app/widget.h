@@ -45,6 +45,7 @@ private slots:
 
     void handleObtainResult(const sourcePosition& ans);
 
+    
 private:
     Ui::Widget *ui;
     Manager * manager;

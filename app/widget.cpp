@@ -86,6 +86,7 @@ void Widget::on_gpsButton_clicked()   // 查询GPS有效性
 }
 
 
+
 void Widget::on_configButton_clicked()
 {
     int id = get_id();
