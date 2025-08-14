@@ -86,7 +86,8 @@
         "netfwd": "cpp",
         "timer": "cpp",
         "future": "cpp",
-        "qtimer": "cpp"
+        "qtimer": "cpp",
+        "unordered_set": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled",
     "C_Cpp.intelliSenseEngine": "default"
