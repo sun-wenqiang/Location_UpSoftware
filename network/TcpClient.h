@@ -109,6 +109,7 @@ public:
     void delay_ms(uint32_t ms);
     void setStatus(ClientState new_state);
     ClientState getStatus();
+    bool getConnectStatus();
 
 
 signals:

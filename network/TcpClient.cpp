@@ -571,6 +571,18 @@ ClientState TcpClient::getStatus()
     return this->status;
 }
 
+bool TcpClient::getConnectStatus() 
+{ 
+    if (this->state() == QAbstractSocket::ConnectedState)
+    {
+        return true;
+    }
+    else
+    {
+        return false; 
+    } 
+}
+
 bool readNodeInfo(const QString &filename, int nodeID, NodeInfo &node)
 {
     QFile file(filename);

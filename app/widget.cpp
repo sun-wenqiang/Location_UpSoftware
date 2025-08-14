@@ -25,18 +25,37 @@ Widget::Widget(QWidget *parent)
         }
 
         connect(bnt, &QPushButton::clicked, this, [this, bnt, i](){
-            bool connected = manager->clients[i]->connectToServer();
-            if (connected)
+            if (manager->clients[i]->getConnectStatus())
             {
-                bnt->setText("已连接");
-                bnt->setStyleSheet("background-color: green;");
-                printConnect(QString("与节点%1建立连接成功").arg(i));
+                bool result = manager->clients[i]->disconnectFromServer();
+                if (result)
+                {
+                    bnt->setText("连接");
+                    bnt->setStyleSheet("background-color: white;");
+                    printConnect(QString("与节点%1断开连接成功").arg(i));
+                }
+                else
+                {
+                    bnt->setText("已连接");
+                    bnt->setStyleSheet("background-color: green;");
+                    printConnect(QString("与节点%1断开连接失败").arg(i));
+                }
             }
             else
             {
-                bnt->setText("连接");
-                bnt->setStyleSheet("background-color: white;");
-                printConnect(QString("与节点%1建立连接失败").arg(i));
+                bool result = manager->clients[i]->connectToServer();
+                if (result)
+                {
+                    bnt->setText("已连接");
+                    bnt->setStyleSheet("background-color: green;");
+                    printConnect(QString("与节点%1建立连接成功").arg(i));
+                }
+                else
+                {
+                    bnt->setText("连接");
+                    bnt->setStyleSheet("background-color: white;");
+                    printConnect(QString("与节点%1建立连接失败").arg(i));
+                }
             }
         });
     }
