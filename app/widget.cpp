@@ -41,7 +41,7 @@ Widget::Widget(QWidget *parent)
         });
     }
 
-    connect(Manager, &Manager::obtainResult, this, &Widget::handleObtainResult);
+    connect(manager, &Manager::obtainResult, this, &Widget::handleObtainResult);
 }
 
 Widget::~Widget()

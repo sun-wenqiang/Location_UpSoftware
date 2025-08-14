@@ -581,7 +581,7 @@ bool readNodeInfo(const QString &filename, int nodeID, NodeInfo &node)
         return false;
     }
 
-    QJsonDocument doc = QJsonDocument::fromJson(file.readAll);
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
     file.close();
 
     if (!doc.isObject())
@@ -619,7 +619,7 @@ bool updateNodeInfo(const QString &filename, NodeInfo &node)
         return false;
     }
 
-    QJsonDocument doc = QJsonDocument::fromJson(file.readAll);
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
     file.close();
 
     if (!doc.isObject())

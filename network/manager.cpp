@@ -13,10 +13,6 @@ Manager::Manager(QObject *parent)
 
 Manager::~Manager()
 {
-    for (auto client:clients)
-    {
-        delete clients;
-    }
 }
 
 void Manager::handleArrivalTime(const Info_ArrivalTime& arrival_info)
@@ -53,13 +49,14 @@ void Manager::handleArrivalTime(const Info_ArrivalTime& arrival_info)
             nodes_pos[i] = {enu_temp.x, enu_temp.y};
             delay[i] = current_node.offset - ref_node.offset;
         }
-        if node_count == 3
+        std::vector<double> source_position;   //解算结果
+        if (node_count == 3)
         {
-            std::vector<double> source_position = solveThreeNodes(nodes_pos, delay);
+            source_position = solveThreeNodes(nodes_pos, delay);
         }
         else
         {
-            std::vector<double> source_position = solveMultiNodes(nodes_pos, delay);
+            source_position = solveMultiNodes(nodes_pos, delay);
         }
         sourcePosition source_result;
         source_result.geo = Enu2Geo({source_position[0], source_position[1], geo_ref.altitude}, geo_ref);
@@ -97,7 +94,7 @@ bool Manager::disconnectFromServer(uint8_t id)
     }
 }
 
-bool Manager::sendMessage(uintt_t id, uint8_t cmd_id, const std::vector<uint8_t> &cmd_data)
+bool Manager::sendMessage(uint8_t id, uint8_t cmd_id, const std::vector<uint8_t> &cmd_data)
 {
     if (!clients[id])
     {

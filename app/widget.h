@@ -43,7 +43,7 @@ private slots:
 
     void on_elseButton_clicked();
 
-    void handleObtainResult(const std::vector<double>& ans)
+    void handleObtainResult(const sourcePosition& ans);
 
 private:
     Ui::Widget *ui;
