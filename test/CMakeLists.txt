@@ -29,3 +29,5 @@ target_link_libraries(app
                     ${FFTW_LIBRARIES}
                     Eigen3::Eigen Qt5::Network)
 
+
+                    
