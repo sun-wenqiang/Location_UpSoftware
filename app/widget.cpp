@@ -3,6 +3,7 @@
 #include "TcpClient.h"
 #include <QPushButton>
 #include <QLabel>
+#include "thresholdDialog.h"
 
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
@@ -88,6 +89,12 @@ void Widget::on_startButton_clicked()
     manager->clients[id]->sendCommand(CMD_COLLECT_CONTROL, cmd_data);
 }
 
+void Widget::on_stopButton_clicked()
+{
+    int id = get_id();
+    std::vector<uint8_t> cmd_data = {0XBB};
+    manager->clients[id]->sendCommand(CMD_COLLECT_CONTROL, cmd_data);
+}
 
 void Widget::on_powerButton_clicked()
 {
@@ -124,15 +131,38 @@ void Widget::on_energyButton_clicked()
 
 void Widget::on_energythresButton_clicked()
 {
-
+    thresholdDialog dlg(this);
+    dlg.setWindowTitle("请输入能量阈值(0~65535)");
+    dlg.setRange(0, 65535);
+    dlg.setDefaultValue(50);
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        int value = dlg.getValue();
+        int id = get_id();
+        uint8_t lowByte = value & 0xFF;
+        uint8_t upByte = (value>>8) & 0xFF;
+        std::vector<uint8_t> cmd_data = {lowByte, upByte};
+        manager->clients[id]->sendCommand(CMD_SET_ENERGY_THRESHOLD, cmd_data);
+        qDebug()<<"设置检测算法能量阈值为："<<value;
+    }
 }
 
 
 void Widget::on_energyratioButton_clicked()
 {
-
+    thresholdDialog dlg(this);
+    dlg.setWindowTitle("请输入比值阈值(0~255)");
+    dlg.setRange(0, 255);
+    dlg.setDefaultValue(2);
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        int value = dlg.getValue();
+        int id = get_id();
+        std::vector<uint8_t> cmd_data = {(uint8_t)value};
+        manager->clients[id]->sendCommand(CMD_SET_RATIO_THRESHOLD, cmd_data);
+        qDebug()<<"设置检测算法比值阈值为："<<value;
+    }
 }
-
 
 void Widget::on_geoButton_clicked()
 {
@@ -141,24 +171,22 @@ void Widget::on_geoButton_clicked()
     manager->clients[id]->sendCommand(CMD_GET_COORDINATES, cmd_data);
 }
 
-
-void Widget::on_pulseButton_clicked()
+void Widget::on_gainButton_clicked()
 {
-
-}
-
-
-void Widget::on_rebootButton_clicked()
-{
-    int id = get_id();
-    std::vector<uint8_t> cmd_data = {0X00};
-    manager->clients[id]->sendCommand(CMD_REBOOT, cmd_data);
-}
-
-
-void Widget::on_elseButton_clicked()
-{
-
+    thresholdDialog dlg(this);
+    dlg.setWindowTitle("请输入放大增益(0~7)");
+    dlg.setRange(0, 7);
+    dlg.setDefaultValue(4);
+    dlg.setGainValues({-120, 0, 6, 14, 20, 26, 34, 40});
+    
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        int value = dlg.getValue();
+        int id = get_id();
+        std::vector<uint8_t> cmd_data = {(uint8_t)value};
+        manager->clients[id]->sendCommand(CMD_SET_AMPLIFICATION, cmd_data);
+        qDebug()<<"设置采集增益为："<<gainValues[value]<<"dB";
+    }
 }
 
 void Widget::printLog(const QString& log)
