@@ -5,6 +5,10 @@
 #include "TcpClient.h"
 #include "manager.h"
 
+
+extern const int gainValues[8];
+
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class Widget;
@@ -23,6 +27,8 @@ public:
 private slots:
     void on_startButton_clicked();
 
+    void on_stopButton_clicked();
+
     void on_powerButton_clicked();
 
     void on_gpsButton_clicked();
@@ -37,11 +43,7 @@ private slots:
 
     void on_geoButton_clicked();
 
-    void on_pulseButton_clicked();
-
-    void on_rebootButton_clicked();
-
-    void on_elseButton_clicked();
+    void on_gainButton_clicked();
 
     void handleObtainResult(const sourcePosition& ans);
 

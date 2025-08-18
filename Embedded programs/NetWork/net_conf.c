@@ -95,22 +95,22 @@ static void W5500_Delete(void)
 void W5500_Init(void)
 {
 	/* Register Critical Function.*/
-	reg_wizchip_cris_cbfunc(Enter_Critical,Exti_Critical);  //注册进入和退出临界区的回调函数
+	reg_wizchip_cris_cbfunc(Enter_Critical,Exti_Critical);  //注锟斤拷锟斤拷锟斤拷锟剿筹拷锟劫斤拷锟斤拷锟侥回碉拷锟斤拷锟斤拷
 
 	/* Register CS Select Function.*/
-	reg_wizchip_cs_cbfunc(W5500_Selcet,W5500_Delete);  //注册W5500片选，前者为选中W5500，后者为不选中
+	reg_wizchip_cs_cbfunc(W5500_Selcet,W5500_Delete);  //注锟斤拷W5500片选锟斤拷前锟斤拷为选锟斤拷W5500锟斤拷锟斤拷锟斤拷为锟斤拷选锟斤拷
 
 	/* Register Write and Read Function.*/
-	reg_wizchip_spi_cbfunc(sFLASH_ReadByte,sFLASH_SendByte);  //注册SPI的读写回调函数，可以通过SPI实现MCU与W5500的数据交换
+	reg_wizchip_spi_cbfunc(sFLASH_ReadByte,sFLASH_SendByte);  //注锟斤拷SPI锟侥讹拷写锟截碉拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷通锟斤拷SPI实锟斤拷MCU锟斤拷W5500锟斤拷锟斤拷锟捷斤拷锟斤拷
 	
 	/* Configure W5500 T/R Buffer.*/
-	wizchip_init(TX_Buffer,RX_Buffer);  //注册网络收发缓冲区
+	wizchip_init(TX_Buffer,RX_Buffer);  //注锟斤拷锟斤拷锟斤拷锟秸凤拷锟斤拷锟斤拷锟斤拷
 	
 	/* Configure Local Information */
-	ctlnetwork(CN_SET_NETINFO,&NetConf);  //配置各种网络信息，如IP，MAC，网关等
+	ctlnetwork(CN_SET_NETINFO,&NetConf);  //锟斤拷锟矫革拷锟斤拷锟斤拷锟斤拷锟斤拷息锟斤拷锟斤拷IP锟斤拷MAC锟斤拷锟斤拷锟截碉拷
 
 	/* Configure Retry Times and Limit Time.*/
-	ctlnetwork(CN_SET_TIMEOUT,&ReTry);  //配置重试次数和超时时常
+	ctlnetwork(CN_SET_TIMEOUT,&ReTry);  //锟斤拷锟斤拷锟斤拷锟皆达拷锟斤拷锟酵筹拷时时锟斤拷
 }
 
 
@@ -186,10 +186,10 @@ void W5500_Reset(void)
 	GPIO_InitStructure.GPIO_Speed                   = GPIO_Speed_100MHz;
 	GPIO_InitStructure.GPIO_OType                   = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_PuPd                    = GPIO_PuPd_NOPULL;
-	GPIO_InitStructure.GPIO_Pin                     = WIZ_RST_Pin;  //只配置PE1
+	GPIO_InitStructure.GPIO_Pin                     = WIZ_RST_Pin;  
 	GPIO_Init(WIZ_RST_Port, &GPIO_InitStructure);
 	
-	//确保可以正确复位和重启
+	//确锟斤拷锟斤拷锟斤拷锟斤拷确锟斤拷位锟斤拷锟斤拷锟斤拷
 	RST_Up;
 	W5500_ResetDelay(1);
 	RST_Down;

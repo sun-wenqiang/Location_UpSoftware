@@ -1,2 +1,33 @@
-# Location_UpSoftware
-The host computer software of the distributed positioning system realizes functions such as node control, protocol analysis, and data interaction.
+# Localization_UpSoftware
+
+基于无人机吊放声纳的分布式定位系统。该项目包含上位机软件、嵌入式程序（STM32F407）以及 MATLAB 仿真代码，实现对声纳信号的采集、处理和目标定位。
+
+## 项目结构
+
+.
+├── CMakeLists.txt       # 上位机软件的 CMake 构建配置文件
+├── Embedded programs    # 嵌入式程序（节点端信号采集、处理和通信）
+├── README.md            # 项目说明文件
+├── algorithm            # 上位机算法模块（TDOA计算）
+├── app                  # 上位机界面模块（GUI）
+├── main.cpp             # 上位机程序入口
+├── matlab_code          # MATLAB 仿真代码（信号处理与TDOA算法）
+├── network              # 上位机网络/节点管理模块（通信协议解析、数据收发）
+├── test                 # 测试代码
+└── utils                # 通用工具模块（坐标转换等）
+
+## 功能概览
+
+### 嵌入式程序（Embedded programs）
+
+- **信号采集**：通过 CS5340 ADC 配合 I2S 总线采集信号。
+- **信号检测与到达时间寻找**：在嵌入式端实现目标信号的检测和目标到达时间的提取。
+- **时间同步**：使用 GPS 和高精度晶振实现多节点间时间同步。
+- **通信与数据传输**：通过 W5500 芯片和 SPI 总线，配合无线通信模块与上位机软件交互。
+
+### 上位机软件
+
+- **节点管理**：控制六个分布式节点的采集、信息查询、功能配置与通信。
+- **数据解析**：解析节点返回的到达时间信息，计算信号到达不同节点的时延差。
+- **定位算法**：使用 TDOA 算法解算目标位置。
+- **可视化**：在界面上展示目标位置和相关信息。

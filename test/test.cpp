@@ -59,11 +59,6 @@ int main() {
     {
         client.delay_ms(100);
     }
-    
-
-
-
-
 
     client.disconnectFromServer();
     return 0;
