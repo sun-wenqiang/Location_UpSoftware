@@ -4,18 +4,26 @@
 
 ## 项目结构
 
-```.```
-```├── CMakeLists.txt       # 上位机软件的 CMake 构建配置文件```
-```├── Embedded programs    # 嵌入式程序（节点端信号采集、处理和通信）```
-```├── README.md            # 项目说明文件```
-```├── algorithm            # 上位机算法模块（TDOA计算）```
-```├── app                  # 上位机界面模块（GUI）```
-```├── main.cpp             # 上位机程序入口```
-```├── matlab_code          # MATLAB 仿真代码（信号处理与TDOA算法）```
-```├── network              # 上位机网络/节点管理模块（通信协议解析、数据收发）```
-```├── test                 # 测试代码```
-```└── utils                # 通用工具模块（坐标转换等）```
+.
+├── CMakeLists.txt       # 上位机软件的 CMake 构建配置文件
 
+├── Embedded programs    # 嵌入式程序（节点端信号采集、处理和通信）
+
+├── README.md            # 项目说明文件
+
+├── algorithm            # 上位机算法模块（TDOA计算）
+
+├── app                  # 上位机界面模块（GUI）
+
+├── main.cpp             # 上位机程序入口
+
+├── matlab_code          # MATLAB 仿真代码（信号处理与TDOA算法）
+
+├── network              # 上位机网络/节点管理模块（通信协议解析、数据收发）
+
+├── test                 # 测试代码
+
+└── utils                # 通用工具模块（坐标转换等）
 
 ## 功能概览
 
