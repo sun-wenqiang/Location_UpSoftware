@@ -5,6 +5,7 @@
 ## 项目结构
 
 .
+
 ├── CMakeLists.txt       # 上位机软件的 CMake 构建配置文件
 
 ├── Embedded programs    # 嵌入式程序（节点端信号采集、处理和通信）
